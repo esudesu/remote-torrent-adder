@@ -34,7 +34,11 @@
 			"webuiapis/tTorrentWebUI.js"
 		]
 	},
-	"options_page": "options.html",
+	"options_ui": {
+		"page": "options.html",
+		"browser_style": true,
+		"chrome_style": true
+	},
 	"page_action": {
 		"default_icon": "icons/BitTorrent16.png"
 	},
@@ -52,5 +56,5 @@
 		"all_frames": true
 		}
 	],
-	"web_accessible_resources": [ "icons/White_X_in_red_background.svg", "icons/BitTorrent16.png", "icons/BitTorrent48.png", "icons/BitTorrent128.png", "miscapis/jquery-2.0.3.min.map", "fancybox/*" ]
+	"web_accessible_resources": [ "icons/White_X_in_red_background.svg", "icons/BitTorrent16.png", "icons/BitTorrent48.png", "icons/BitTorrent128.png", "fancybox/*" ]
 }

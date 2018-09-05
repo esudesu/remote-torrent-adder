@@ -67,7 +67,7 @@ chrome.tabs.onCreated.addListener(function(tab) {
 /////////////////////////////////////////////////////
 // OVERWRITE THE CLICK-EVENT OF LINKS WE WANT TO GRAB
 /////////////////////////////////////////////////////
-chrome.extension.onRequest.addListener(function(request, sender, sendResponse) {
+chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 	var server = JSON.parse(localStorage.getItem("servers"))[0]; // primary server
 	if(request.action == "addTorrent") {
 		if(request.server) {
