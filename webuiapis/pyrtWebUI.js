@@ -18,7 +18,7 @@ RTA.clients.pyrtAdder = function(server, data, filename) {
 	
 	// send the torrent
 	var xhr = new XMLHttpRequest();
-	xhr.open("POST", url + "ajax", true, server.login, server.password);
+	xhr.open("POST", url + "ajax", true);
 	xhr.onreadystatechange = function(data) {
 		if(xhr.readyState == 4 && xhr.status == 200) {
 			if(/.*Redirect.*/.exec(xhr.responseText)) {

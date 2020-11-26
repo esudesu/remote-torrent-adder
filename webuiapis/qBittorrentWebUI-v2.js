@@ -1,15 +1,8 @@
-RTA.clients.qBittorrentAdder = function(server, data, torrentname, label, dir) {
-	var target;
-	if(data.substring(0,7) == "magnet:")
-		target = "download";
-	else
-		target = "upload";
-	
-	
+RTA.clients.qBittorrentV2Adder = function(server, data, torrentname, label, dir) {
 	var rootUrl = (server.hostsecure ? "https" : "http") + "://" + server.host + ":" + server.port;
 
 	// execute login request
-	fetch(rootUrl + "/login", {
+	fetch(rootUrl + "/api/v2/auth/login", {
 		method: 'POST',
 		headers: {
 			"Content-Type": "application/x-www-form-urlencoded; charset=utf-8"
@@ -28,11 +21,7 @@ RTA.clients.qBittorrentAdder = function(server, data, torrentname, label, dir) {
 			if(data.substring(0,7) == "magnet:") {
 				message.append("urls", data)
 			} else {
-				const ords = Array.prototype.map.call(data, function byteValue(x) {
-					return x.charCodeAt(0) & 0xff;
-				});
-				const ui8a = new Uint8Array(ords);
-				const dataBlob = new Blob([ui8a.buffer], {type: "application/x-bittorrent"});
+				const dataBlob = RTA.convertToBlob(data, "application/x-bittorrent");
 				const myName = ((torrentname.length && torrentname.length > 1) ? torrentname : (new Date).getTime());
 				message.append("fileselect[]", dataBlob, myName);
 			}
@@ -46,14 +35,14 @@ RTA.clients.qBittorrentAdder = function(server, data, torrentname, label, dir) {
 			}
 
 			// add the torrent
-			fetch(rootUrl + "/command/" + target, {
+			fetch(rootUrl + "/api/v2/torrents/add", {
 				method: 'POST',
 				body: message
 			})
 			.then(RTA.handleFetchError)
 			.then(response => response.text())
 			.then(addText => {
-				if(addText != "" && addText != "Ok.") {
+				if(addText != "Ok.") {
 					RTA.displayResponse("Failure", "Adding the torrent failed:\n" + addText, true);
 				} else {
 					RTA.displayResponse("Success", "Torrent added successfully to " + server.name + ".");
@@ -67,5 +56,4 @@ RTA.clients.qBittorrentAdder = function(server, data, torrentname, label, dir) {
 	.catch(error => {
 		RTA.displayResponse("Failure", "Could not contact " + server.name + "\nError: " + error.message, true);
 	});
-
 };

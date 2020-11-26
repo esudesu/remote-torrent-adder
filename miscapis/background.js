@@ -82,19 +82,21 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 			localStorage.setItem(x, request.data[x]);
 		sendResponse({});
 	} else if(request.action == "pageActionToggle") {
-		chrome.pageAction.show(sender.tab.id);
+		chrome.browserAction.setIcon({path: {"16":"icons/BitTorrent16.png", "48":"icons/BitTorrent48.png", "128":"icons/BitTorrent128.png"}, tabId: sender.tab.id });
 		sendResponse({});
 	} else if(request.action == "constructContextMenu") {
 		RTA.constructContextMenu();
 		sendResponse({});
 	} else if(request.action == "registerRefererListeners") {
 		registerReferrerHeaderListeners();
+	} else if(request.action == "registerAuthenticationListeners") {
+		registerAuthenticationListeners();
 	} 
 });
 
-//////////////////////////////////////////////////////////
-// CATCH LINKS WHOSE CSRF PROTECTION WE NEED TO CIRCUMVENT
-//////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+// CATCH WEBUI REQUESTS WHOSE CSRF PROTECTION WE NEED TO CIRCUMVENT
+///////////////////////////////////////////////////////////////////
 var listeners = [];
 function registerReferrerHeaderListeners() {
 	// unregister old listeners
@@ -106,21 +108,23 @@ function registerReferrerHeaderListeners() {
 	var servers = JSON.parse(localStorage.getItem("servers"));
 	for(var i in servers) {
 		var server = servers[i];
-		if(server && server.client && server.client == "qBittorrent WebUI") {
-			var url = "http" + (server.hostsecure ? "s" : "") + "://" + server.host + ":" + server.port + "/";
-			
-			var listener = function(details) {
+		const url = "http" + (server.hostsecure ? "s" : "") + "://" + server.host + ":" + server.port + "/";
+		
+		const listener = (function(arg) {
+			const myUrl = arg;
+
+			return function(details) {
 				var foundReferer = false;
 				var foundOrigin = false;
-				for (var i = 0; i < details.requestHeaders.length; ++i) {
-					if (details.requestHeaders[i].name === 'Referer') {
+				for (var j = 0; j < details.requestHeaders.length; ++j) {
+					if (details.requestHeaders[j].name === 'Referer') {
 						foundReferer = true;
-						details.requestHeaders[i].value = url;
+						details.requestHeaders[j].value = myUrl;
 					}
 					
-					if (details.requestHeaders[i].name === 'Origin') {
+					if (details.requestHeaders[j].name === 'Origin') {
 						foundOrigin = true;
-						details.requestHeaders[i].value = url;
+						details.requestHeaders[j].value = myUrl;
 					}
 					
 					if(foundReferer && foundOrigin) {
@@ -129,24 +133,127 @@ function registerReferrerHeaderListeners() {
 				}
 				
 				if(!foundReferer) {
-					details.requestHeaders.push({'name': 'Referer', 'value': url});
+					details.requestHeaders.push({'name': 'Referer', 'value': myUrl});
 				}
 				
 				if(!foundOrigin) {
-					details.requestHeaders.push({'name': 'Origin', 'value': url});
+					details.requestHeaders.push({'name': 'Origin', 'value': myUrl});
 				}
-				
-				console.log(details); // TODO
+
 				return {requestHeaders: details.requestHeaders};
-			}
-			
-			chrome.webRequest.onBeforeSendHeaders.addListener(listener, {urls: [
-				"http" + (server.hostsecure ? "s" : "") + "://" + server.host + ":" + server.port + "/*"
-			]}, ["blocking", "requestHeaders"]);
-			
-			listeners.push(listener);
+			};
+		})(url);
+		
+		if(server.host && server.port) {
+			chrome.webRequest.onBeforeSendHeaders.addListener(listener, {urls: [ url + "*" ]}, ["blocking", "requestHeaders", "extraHeaders"]);
 		}
+		
+		listeners.push(listener);
 	}
 }
 
 registerReferrerHeaderListeners();
+
+/////////////////////////////////////////////////////
+// CATCH TORRENT LINKS AND ALTER THEIR REFERER/ORIGIN
+/////////////////////////////////////////////////////
+RTA.getTorrentLink = "";
+const headersListener = function(details) {
+	var output = { };
+	
+	if(details.url == RTA.getTorrentLink) {
+		var foundReferer = false;
+		var foundOrigin = false;
+		for (var j = 0; j < details.requestHeaders.length; ++j) {
+			if (details.requestHeaders[j].name === 'Referer') {
+				foundReferer = true;
+				details.requestHeaders[j].value = details.url;
+			}
+			
+			if (details.requestHeaders[j].name === 'Origin') {
+				foundOrigin = true;
+				details.requestHeaders[j].value = details.url;
+			}
+			
+			if(foundReferer && foundOrigin) {
+				break;
+			}
+		}
+		
+		if(!foundReferer) {
+			details.requestHeaders.push({'name': 'Referer', 'value': details.url});
+		}
+		
+		if(!foundOrigin) {
+			details.requestHeaders.push({'name': 'Origin', 'value': details.url});
+		}
+
+		output = { requestHeaders: details.requestHeaders };
+
+		RTA.getTorrentLink = "";
+	}
+
+	return output;
+};
+
+chrome.webRequest.onBeforeSendHeaders.addListener(headersListener, {urls: [ "<all_urls>" ]}, ["blocking", "requestHeaders", "extraHeaders"]);
+
+
+////////////////////////////////////////////////////
+// SUPPLY DIGEST AUTHENTICATION TO WEB UIS WE MANAGE
+////////////////////////////////////////////////////
+var onAuthListeners = [];
+var triedRequestIds = new Set();
+function registerAuthenticationListeners() {
+	// unregister old listeners
+	while(onAuthListeners.length > 0) {
+		chrome.webRequest.onAuthRequired.removeListener(onAuthListeners.pop());
+	}
+	
+	// register new listeners
+	var servers = JSON.parse(localStorage.getItem("servers"));
+	for(var i in servers) {
+		var server = servers[i];
+		const url = "http" + (server.hostsecure ? "s" : "") + "://" + server.host + ":" + server.port + "/";
+		
+		const listener = (function(user, pass, url) {
+			return function(details) {
+				var authStuff;
+				
+				if(triedRequestIds.has(details.requestId)) {
+					authStuff = {  }; // cause the browser to resume default behavior
+					triedRequestIds.delete(details.requestId);
+				} else if(details.tabId != -1) {
+					authStuff = {  };
+				} else {
+					authStuff = { authCredentials: { username: user, password: pass } };
+					triedRequestIds.add(details.requestId);
+				}
+				
+				return authStuff;
+			};
+		})(server.login, server.password, url);
+		
+		if(server.host && server.port) {
+			chrome.webRequest.onAuthRequired.addListener(listener, { urls: [ url + "*" ], tabId: -1 }, ["blocking"]);
+		}
+		
+		onAuthListeners.push(listener);
+	}
+}
+
+registerAuthenticationListeners();
+
+
+/////////////////////////////////////////////////////////
+// register browser action for opening a tab to the webui
+/////////////////////////////////////////////////////////
+chrome.browserAction.onClicked.addListener(function(tab) {
+	const servers = JSON.parse(localStorage.getItem("servers"));
+	if(servers.length > 0) {
+		const server = servers[0];
+		const relativePath = server.ruTorrentrelativepath || server.utorrentrelativepath || server.delugerelativepath || server.rtorrentxmlrpcrelativepath || "/";
+		const url = "http" + (server.hostsecure ? "s" : "") + "://" + server.host + ":" + server.port + relativePath;
+		chrome.tabs.create({ url: url });
+	}
+});

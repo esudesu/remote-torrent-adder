@@ -165,7 +165,39 @@ $(document).ready(function(){
 								$(this).parents("td").find("select[name=labellist] option:selected").remove();
 								saveServersSettings();
 							});
-						break;
+							break;
+						case "autolabellist":
+							var thisTd = $(mySettingInput).parents("td");
+							thisTd.find("button[name=addautolabelbutton]").click(function() {
+								var answer = prompt("Enter a new tracker url / label combination like this:\nSOMETRACKER.COM,SOMELABEL");
+								if(answer !== null) {
+									$(this).parents("td").find("select[name=autolabellist]").append($("<option>", {
+										text: answer
+									}));
+									saveServersSettings();
+								}
+							});
+							thisTd.find("button[name=delautolabelbutton]").click(function() {
+								$(this).parents("td").find("select[name=autolabellist] option:selected").remove();
+								saveServersSettings();
+							});
+							break;
+						case "autodirlist":
+							var thisTd = $(mySettingInput).parents("td");
+							thisTd.find("button[name=addautodirbutton]").click(function() {
+								var answer = prompt("Enter a new tracker url / directory combination like this:\nSOMETRACKER.COM,SOMEDIRECTORY");
+								if(answer !== null) {
+									$(this).parents("td").find("select[name=autodirlist]").append($("<option>", {
+										text: answer
+									}));
+									saveServersSettings();
+								}
+							});
+							thisTd.find("button[name=delautodirbutton]").click(function() {
+								$(this).parents("td").find("select[name=autodirlist] option:selected").remove();
+								saveServersSettings();
+							});
+							break;
 					}
 				}
 			}
@@ -174,7 +206,7 @@ $(document).ready(function(){
 });
 
 function loadGeneralSettings() {
-	var e = document.querySelectorAll("#linksfoundindicator,#showpopups,#popupduration,#catchfromcontextmenu,#catchfrompage,#linkmatches,#catchfromnewtab,#registerDelay")
+	var e = document.querySelectorAll("#linksfoundindicator,#showpopups,#popupduration,#hearpopups,#catchfromcontextmenu,#catchfrompage,#linkmatches,#catchfromnewtab,#registerDelay")
 	for (key in e) {
 		getSetting(e[key]);
 	}
@@ -268,23 +300,16 @@ function registerGeneralSettingsEvents() {
 		flipVisibility(this.id, 'popupduration');
 	};
 
+	document.querySelector("#hearpopups").onchange = function() {
+		setSetting(this, (this.checked) ? 'true' : 'false');
+	};
+
 	document.querySelector("#popupduration").onkeyup = function() {
 		setSetting(this, this.value);
 	};
 
 	document.querySelector("#notificationtest").onclick = function() {
-		var opts = {
-					type: "basic",
-					iconUrl: "icons/BitTorrent128.png",
-					title: "This is a test notification",
-					priority: 0,
-					message: "This is a test message!"
-					};
-		var id = Math.floor(Math.random() * 99999) + "";
-
-		chrome.notifications.create(id, opts, function(myId) { id = myId });
-
-		setTimeout(function(){chrome.notifications.clear(id, function() {});}, localStorage['popupduration']);
+		RTA.displayResponse("This is a test notification","This is a test message!",false)
 	};
 
 	document.querySelector("#catchfromcontextmenu").onchange = function() {
@@ -316,6 +341,42 @@ function registerGeneralSettingsEvents() {
 
 	document.querySelector("#registerDelay").onkeyup = function() {
 		setSetting(this, this.value);
+	};
+
+	document.querySelector("#createBackupButton").onclick = function() {
+		const text = JSON.stringify(localStorage);
+
+		var el = document.createElement("a");
+		el.setAttribute("href", "data:application/json;charset=utf-8," + encodeURIComponent(text));
+		el.setAttribute("download", "RTA-settings.json");
+		el.style.display = "none";
+		document.body.appendChild(el);
+		el.click();
+		document.body.removeChild(el);
+	};
+
+	document.querySelector("#importBackupSelector").onchange = function() {
+		if (this.files.length === 0) {
+			return;
+		} else {
+			const reader = new FileReader();
+			reader.onload = function() {
+				const resultField = document.querySelector("#importResultField");
+				try {
+					const settings = JSON.parse(reader.result);
+
+					for(const key in settings) {
+						localStorage.setItem(key, settings[key]);
+					}
+
+					resultField.innerHTML = "Result: &#x2714; Settings imported";
+				} catch(ex) {
+					resultField.innerHTML = "Result: &#x274C; Couldn't parse the input file.";
+				}
+
+			};
+			reader.readAsText(this.files[0]);
+		}
 	};
 }
 
@@ -353,6 +414,8 @@ function saveServersSettings() {
 	chrome.runtime.sendMessage({"action": "constructContextMenu"});
 
 	chrome.runtime.sendMessage({"action": "registerRefererListeners"});
+
+  chrome.runtime.sendMessage({"action": "registerAuthenticationListeners"});
 
 	return servers;
 }

@@ -2,7 +2,7 @@
 	"name": "Remote Torrent Adder",
 	"short_name": "RTA",
 	"icons": {"16":"icons/BitTorrent16.png", "48":"icons/BitTorrent48.png", "128":"icons/BitTorrent128.png"},
-	"version": "1.2.15",
+	"version": "1.3.6",
 	"manifest_version": 2,
 	"description": "Add torrents using several programs' WebUIs",
 	"permissions": ["*://*/*","contextMenus","notifications","tabs","webRequest","webRequestBlocking"],
@@ -10,6 +10,8 @@
 		"scripts": [
 			"miscapis/RTAinit.js",
 			"miscapis/browser.js",
+			"miscapis/safe-buffer.js",
+			"miscapis/bencode.js",
 			"miscapis/functions.js",
 			"miscapis/background.js",
 			"miscapis/config.js",
@@ -23,6 +25,7 @@
 			"webuiapis/VuzeRemoteUI.js",
 			"webuiapis/BuffaloWebUI.js",
 			"webuiapis/qBittorrentWebUI.js",
+			"webuiapis/qBittorrentWebUI-v2.js",
 			"webuiapis/QnapDownloadStation.js",
 			"webuiapis/DelugeWebUI.js",
 			"webuiapis/pyrtWebUI.js",
@@ -30,8 +33,9 @@
 			"webuiapis/HadoukenWebUI.js",
 			"webuiapis/nodejsrtorrentWebUI.js",
 			"webuiapis/SynologyWebUI.js",
-			"webuiapis/floodWebUI.js",
-			"webuiapis/tTorrentWebUI.js"
+			"webuiapis/FloodWebUI.js",
+			"webuiapis/tTorrentWebUI.js",
+			"webuiapis/rtorrentXmlRpc.js"
 		]
 	},
 	"options_ui": {
@@ -40,11 +44,12 @@
 		"chrome_style": true
 	},
 	"page_action": {
-		"default_icon": "icons/BitTorrent16.png"
+    "default_icon": {"16":"icons/BitTorrent16-gray.png", "48":"icons/BitTorrent48-gray.png", "128":"icons/BitTorrent128-gray.png"},
+		"default_title": "Remote Torrent Adder"
 	},
 	"content_scripts": [
 		{
-		"matches": ["*://*/*"],
+		"matches": ["<all_urls>"],
 		"js": [
 			"miscapis/modal.js",
 			"miscapis/content_rta.js"

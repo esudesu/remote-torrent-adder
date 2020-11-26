@@ -12,12 +12,12 @@ function vhtml_handleResponse(data) {
 
 RTA.clients.vuzeHtmlAdder = function(server, data) {
 	var xhr = new XMLHttpRequest();
-	xhr.open("POST", "http://" + server.host + ":" + server.port + "/index.tmpl?d=u&local=1", true, server.login, server.password);
+	xhr.open("POST", "http://" + server.host + ":" + server.port + "/index.tmpl?d=u&local=1", true);
 	xhr.onreadystatechange = vhtml_handleResponse;
 	
 	if(data.substring(0,7) == "magnet:") {
 		var mxhr = new XMLHttpRequest();
-		mxhr.open("GET", "http://" + server.host + ":" + server.port + "/index.tmpl?d=u&upurl=" + encodeURIComponent(data), true, server.login, server.password);
+		mxhr.open("GET", "http://" + server.host + ":" + server.port + "/index.tmpl?d=u&upurl=" + encodeURIComponent(data), true);
 		mxhr.onreadystatechange = vhtml_handleResponse;
 		mxhr.send(message);
 	} else {
