@@ -62,7 +62,7 @@ RTA.clients.floodAdder = function (server, torrentdata) {
           .then(RTA.handleFetchError)
           .then((response) => response.text())
           .then((text) => {
-            if (text == '[["0"]]') {
+            if (text === '' || text == '[["0"]]') {
               RTA.displayResponse("Success", "Torrent added successfully.");
             } else {
               RTA.displayResponse(
